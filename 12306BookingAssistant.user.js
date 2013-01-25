@@ -78,25 +78,38 @@ withjQuery(function($, window){
 			window.webkitNotifications.requestPermission();
 		}
 	});
-	function notify(str, timeout, skipAlert) {
+	function notify(str, timeout, skipAlert, audio) {
 		if( window.webkitNotifications && window.webkitNotifications.checkPermission() == 0 ) {
 			var notification = webkitNotifications.createNotification(
 				"http://www.12306.cn/mormhweb/images/favicon.ico",  // icon url - can be relative
 				'12306订票助手',  // notification title
 				str
 			);
+			notification.onclose = function() {
+				if(audio && !audio.paused)
+					audio.pause();
+			};
+			notification.onclick = function() {
+				this.cancel();
+			};
+			if(audio)
+				audio.play();
 			notification.show();
 			if ( timeout ) {
 				setTimeout(function() {
 					notification.cancel();
 				}, timeout);
 			}
-			return true;
+			return notification;
 		} else {
 			if( !skipAlert ) {
+				if(audio)
+					audio.play();
 				alert( str );
+				if(audio && !audio.paused)
+					audio.pause();
 			}
-			return false;
+			return null;
 		}
 	}
 	function route(match, fn) {
@@ -309,11 +322,10 @@ withjQuery(function($, window){
 		var onticketAvailable = function() {
 			if(window.Audio) {
 				if(!audio) {
-					audio = new Audio("http://www.w3school.com.cn/i/song.ogg");
+					audio = new Audio("http://panzihao.cn/msg.mp3");
 					audio.loop = true;
 				}
-				audio.play();
-				notify("可以订票了！", null, true);
+				notify("可以订票了！", null, true, audio);
 			} else {
 				notify("可以订票了！");
 			}
@@ -350,9 +362,9 @@ withjQuery(function($, window){
 							var el = $(this).find("input").attr("checked", val);
 							el && el[0] && ( ticketType[el[0].ticketTypeId] = val );
 							if(el && el[0] && el[0].checked)
-								$(e).css("color", "#090");
+								$(e).css("color", "#090").find("div").show();
 							else
-								$(e).css("color", "#055A78");
+								$(e).css("color", "#055A78").find("div").hide();
 						});
 						return false;
 					}))
@@ -362,9 +374,9 @@ withjQuery(function($, window){
 							var el = $(this).find("input").attr("checked", val);
 							el && el[0] && ( ticketType[el[0].ticketTypeId] = val );
 							if(el && el[0] && el[0].checked)
-								$(e).css("color", "#090");
+								$(e).css("color", "#090").find("div").show();
 							else
-								$(e).css("color", "#055A78");
+								$(e).css("color", "#055A78").find("div").hide();
 						});
 						return false;
 					}))
@@ -373,7 +385,7 @@ withjQuery(function($, window){
 							var el = $(this).find("input").attr("checked", true);
 							el && el[0] && ( ticketType[el[0].ticketTypeId] = true );
 							if(el && el[0] && el[0].checked)
-								$(e).css("color", "#090");
+								$(e).css("color", "#090").find("div").show();
 						});
 						return false;
 					}))
@@ -412,7 +424,7 @@ withjQuery(function($, window){
 				)
 			)
 			.append($("<br />"));
-		$("<input id='isStudentTicket' type='checkbox' style='cursor:pointer;margin:-2px 5px 0 8px' />")
+		$("<input id='isStudentTicket' type='checkbox' style='cursor:pointer;margin:-2px 5px 0 7px' />")
 			.change(function(){
 					isStudentTicket = this.checked ;
 				})
@@ -425,13 +437,13 @@ withjQuery(function($, window){
 		container.length ?
 			ui.appendTo(container) : ui.appendTo(document.body);
 
-		$("#gridbox").height(260);
+		//$("#gridbox").height(260);
 
 		//前一日后一日UI修改
 		//by PeterPanZH 2013-01-24
 		$('#startdatepicker').parent("td").width(156);
 		$('#startdatepicker').width(75).css("margin", "0");
-		$('<a id="app_pre_day" style="margin:0 -2px 0 0"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAADD0lEQVRIx9WWP4skVRTFf6+qu2d3ZnYmGMV1EQWRNdJE/ABGLmxgYmSmqeBXEGO/gKmpgaAiuIGBYLTIgoGYCCsiIqzOzp+u6q737rvH4FV3V7c1ZhtYcOlX/arOuffcP6+CJJ7kVfGEr8lq8fEvfykECCGsNwVIQi5yFu6OWW8pk0bNSSnz2TuvhS0Cd/Hu8yfsKqbeXMWyRBa9CXMwgXm5r6vAR189+HcEOTu/Nc6FizAAXwGbQ5JIGbqs3mDZr5f9/3s1tCmPE5iL5Dve996u9mIPvAVuZb3MQgo00cYJokPnbCKQcCD3MqSs/hnxODoVoXjuBXyRQUE0cSQCS0500RmEsPHeB1onh8ed83fn3L4x4cfTxH4dWGRYGLS5ODROYLk8mLUlURa4Q2viNIrjCbx/+zone4F7v3fcvF7TmmizWJjIXCFRMmeRRbsh75MrzqIQcPfWlNdPyivzJC4NjnIBb0w0Bl6LxSCRG4KYWWZYmq/lOY/iIok3nplw59Yes6onlYgu5smZJ1hYIWizCFVNk8YiSLl4kYpEl0m8eFDzwcszTvYqBCQXrk1vnEXneBpoTOs8VJWQXRHBH0tx0an33jmahFKifQUNe9AcHp47tQKtqchrcOj95u4sislK85hYmpgF+PJhx9vfXvLJzwsa07pjk0N0WMSV9gW868t4OA6qYQRrglSkeuFGzeE08OEPDW/eO+fzXzuiF/1jFkpOY5sujl6KAh8h6JKXZCUxN5UqSSK5eOWpCadRvPf1GXe/OefBIyM5KJXSXA7A82q+7OagTUZrMLcyElI/GszLy4eTwEvPzbj/Z+LOp49469V9ZtPSyStg78fKMFlrgiZm9nPxvGi8TbT6ffqoJh5UfPHTgtmzM+LK695cV5wHTcwcWJEn5m2CTXILWHKob06xvmzXHquvNI1I1KRcOjIVSeJAouSbieqw5TFDQP3HidbGTF0H9q5VVA61i+n6INkcNKtGY5DLIe7xtcB8jGBpmfvffU9nTs5ekF2bkaoRT0c+GOY79+F//1XxD0ojDIJuG2hUAAAAAElFTkSuQmCC" alt="前一天" title="前一天" style="height:26px;margin:0" /></a>').click(function() {
+		$('<a id="app_pre_day" style="margin:0 -2px 0 0"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAADD0lEQVRIx9WWP4skVRTFf6+qu2d3ZnYmGMV1EQWRNdJE/ABGLmxgYmSmqeBXEGO/gKmpgaAiuIGBYLTIgoGYCCsiIqzOzp+u6q737rvH4FV3V7c1ZhtYcOlX/arOuffcP6+CJJ7kVfGEr8lq8fEvfykECCGsNwVIQi5yFu6OWW8pk0bNSSnz2TuvhS0Cd/Hu8yfsKqbeXMWyRBa9CXMwgXm5r6vAR189+HcEOTu/Nc6FizAAXwGbQ5JIGbqs3mDZr5f9/3s1tCmPE5iL5Dve996u9mIPvAVuZb3MQgo00cYJokPnbCKQcCD3MqSs/hnxODoVoXjuBXyRQUE0cSQCS0500RmEsPHeB1onh8ed83fn3L4x4cfTxH4dWGRYGLS5ODROYLk8mLUlURa4Q2viNIrjCbx/+zone4F7v3fcvF7TmmizWJjIXCFRMmeRRbsh75MrzqIQcPfWlNdPyivzJC4NjnIBb0w0Bl6LxSCRG4KYWWZYmq/lOY/iIok3nplw59Yes6onlYgu5smZJ1hYIWizCFVNk8YiSLl4kYpEl0m8eFDzwcszTvYqBCQXrk1vnEXneBpoTOs8VJWQXRHBH0tx0an33jmahFKifQUNe9AcHp47tQKtqchrcOj95u4sislK85hYmpgF+PJhx9vfXvLJzwsa07pjk0N0WMSV9gW868t4OA6qYQRrglSkeuFGzeE08OEPDW/eO+fzXzuiF/1jFkpOY5sujl6KAh8h6JKXZCUxN5UqSSK5eOWpCadRvPf1GXe/OefBIyM5KJXSXA7A82q+7OagTUZrMLcyElI/GszLy4eTwEvPzbj/Z+LOp49469V9ZtPSyStg78fKMFlrgiZm9nPxvGi8TbT6ffqoJh5UfPHTgtmzM+LK695cV5wHTcwcWJEn5m2CTXILWHKob06xvmzXHquvNI1I1KRcOjIVSeJAouSbieqw5TFDQP3HidbGTF0H9q5VVA61i+n6INkcNKtGY5DLIe7xtcB8jGBpmfvffU9nTs5ekF2bkaoRT0c+GOY79+F//1XxD0ojDIJuG2hUAAAAAElFTkSuQmCC" alt="前一天" title="前一天" style="height:26px;margin:0 0 1px 0" /></a>').click(function() {
 			if( $(this).hasClass("disabled") ) {
 				return false ;
 			}
@@ -440,7 +452,7 @@ withjQuery(function($, window){
 			document.getElementById('startdatepicker').value    =  __date_format(date)  ;
 				return false;
 		}).insertBefore($('#startdatepicker'));
-		$('<a id="app_pre_day" style="margin:0 0 0 -2px"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAADGklEQVRIx9WWu44cRRSGv+ru3RnfsISNuaxYCJCcQ0JEwls4ggcgRSJ0jETCI4AckGCJJ0Ai4CZAIsBI5iIbIUBGrHanuqerzoWgqmd2x20yB7R0pOrpnv8/569z/urg7jzOq+ExX920ePfuAw8BQgibhw64O26OqmNmiNTISp4NI2floxuvhDMEZs6bh1fYVcxrmJdQd9Sp4YiBOIiV+7YJ3Pzkm4crUDXuRePYnHAKfAIWg+xOVhjVa8C6rtf190ULfdZ5AjEn2072NdvpWarAZ8ClrNfquAdiknmCZDAa2wrcMaAXpw2BrF7f8RJKydwK+KDgwYlppgLJRjJnFAhhm/1xdp47F7hzrHQEusBWEikVDAqDQK8lodMEmzYV0fKiOr04gziDOn+NxuvX9rhxuCAA96NxNFKei9MLxOysxInZicK8RFmsgG/JMYcopWueOdfw1vUlnz8Qbv0yskrGsm3I5vTqRCng1jrDqY3cEiRlrbAW28jjDiejl+4x6JrAq1c7Xn6y5dbPIx/8NNLgXOgCUQpRaFpiloclyllLFtnpcy03OyfJNu2a1Mnm7DWBN15a8uFrl7h+ueVeNFYCMRfpXB5Rwe9r53h03MHcMYf7K0MNrG68OhsSMfhncP44Ubou0AtcNMrQ7BKkLGV4pAC7O2YQxzqtTSHASyO8/8PAe9/1DINycKWjl9Jd+1b1natgIlADqZZwlIykTlfF/PjXxM1vI7/9mTi4tsDPh80UJysDic0QjNkY6h5InVxxOErO2uDHv5V3vlrx9d2RJ55qeeHZBWt1khTgXMF12rBdgj4LvcBKSsfkag0d8PYXkdvf93Cp4cXn90nmrLIjts1aN2ZYPWaXICblvJY/ZoNUCS7uB27fGTg82CNbmYukpbpsW3edbNf8EedBTMoFKROZdEuQzXn6akeUstZTwD4B+sa8aiPMSBSzlonMpeyJYHLRyVENzmTMaUD/jxOtT0rbBhbLhsagNWdvc5BspTDf4tgM7uVlYDVHsBbly08/YxRD1QqyVb+YUHcznflgWO3ch//9V8W/rpIU6waY0xMAAAAASUVORK5CYII=" alt="后一天" title="后一天" style="height:26px;margin:0" /></a>').click(function() {
+		$('<a id="app_pre_day" style="margin:0 0 0 -2px"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAADGklEQVRIx9WWu44cRRSGv+ru3RnfsISNuaxYCJCcQ0JEwls4ggcgRSJ0jETCI4AckGCJJ0Ai4CZAIsBI5iIbIUBGrHanuqerzoWgqmd2x20yB7R0pOrpnv8/569z/urg7jzOq+ExX920ePfuAw8BQgibhw64O26OqmNmiNTISp4NI2floxuvhDMEZs6bh1fYVcxrmJdQd9Sp4YiBOIiV+7YJ3Pzkm4crUDXuRePYnHAKfAIWg+xOVhjVa8C6rtf190ULfdZ5AjEn2072NdvpWarAZ8ClrNfquAdiknmCZDAa2wrcMaAXpw2BrF7f8RJKydwK+KDgwYlppgLJRjJnFAhhm/1xdp47F7hzrHQEusBWEikVDAqDQK8lodMEmzYV0fKiOr04gziDOn+NxuvX9rhxuCAA96NxNFKei9MLxOysxInZicK8RFmsgG/JMYcopWueOdfw1vUlnz8Qbv0yskrGsm3I5vTqRCng1jrDqY3cEiRlrbAW28jjDiejl+4x6JrAq1c7Xn6y5dbPIx/8NNLgXOgCUQpRaFpiloclyllLFtnpcy03OyfJNu2a1Mnm7DWBN15a8uFrl7h+ueVeNFYCMRfpXB5Rwe9r53h03MHcMYf7K0MNrG68OhsSMfhncP44Ubou0AtcNMrQ7BKkLGV4pAC7O2YQxzqtTSHASyO8/8PAe9/1DINycKWjl9Jd+1b1natgIlADqZZwlIykTlfF/PjXxM1vI7/9mTi4tsDPh80UJysDic0QjNkY6h5InVxxOErO2uDHv5V3vlrx9d2RJ55qeeHZBWt1khTgXMF12rBdgj4LvcBKSsfkag0d8PYXkdvf93Cp4cXn90nmrLIjts1aN2ZYPWaXICblvJY/ZoNUCS7uB27fGTg82CNbmYukpbpsW3edbNf8EedBTMoFKROZdEuQzXn6akeUstZTwD4B+sa8aiPMSBSzlonMpeyJYHLRyVENzmTMaUD/jxOtT0rbBhbLhsagNWdvc5BspTDf4tgM7uVlYDVHsBbly08/YxRD1QqyVb+YUHcznflgWO3ch//9V8W/rpIU6waY0xMAAAAASUVORK5CYII=" alt="后一天" title="后一天" style="height:26px;margin:0 0 1px 0" /></a>').click(function() {
 			if( $(this).hasClass("disabled") ) {
 				return false ;
 			}
@@ -490,22 +502,22 @@ withjQuery(function($, window){
 			ticketType.push(false);
 			if(i<3) return;
 			ticketType[i] = true;
-			$(e).html('<label for="ticketType' + String(i) + '" style="cursor:pointer">' + $(e).text() + '</label>').css("color", "#090");
+			$(e).html('<label for="ticketType' + String(i) + '" style="cursor:pointer">' + $(e).text() + '</label>').css("color", "#090").css("position", "relative").prepend('<div style="width:10px;height:10px;position:absolute;top:0;left:0;margin:0;padding:0;"><img style="width:10px;height:10px;margin:0;" src="data:image/png;base64,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" /></div>');
 			var c = $("<input/>").attr("type", "checkBox").attr("checked", true).attr("id", "ticketType" + String(i)).hide();
 			c[0].ticketTypeId = i;
 			c.change(function() {
 				ticketType[this.ticketTypeId] = this.checked;
 				if(this.checked)
-					$(this).parent("td").css("color", "#090");
+					$(this).parent("td").css("color", "#090").find("div").show();
 				else
-					$(this).parent("td").css("color", "#055A78");
+					$(this).parent("td").css("color", "#055A78").find("div").hide();
 			}).appendTo(e);
             checkbox_list.push(c);
 		});
         $.each([1, 2], function(){
             var c   = checkbox_list.pop() ;
             c[0].checked    = false ;
-            c.parent("td").css("color", "#055A78");
+            c.parent("td").css("color", "#055A78").find("div").hide();
             ticketType[ c[0].ticketTypeId ] = this.checked ;
 
         });
@@ -648,11 +660,13 @@ withjQuery(function($, window){
 						//Success!
 						var audio;
 						if( window.Audio ) {
-							audio = new Audio("http://www.w3school.com.cn/i/song.ogg");
+							audio = new Audio("http://panzihao.cn/msg.mp3");
 							audio.loop = true;
-							audio.play();
+							notify("恭喜，车票预订成！", null, true, audio);
 						}
-						notify("恭喜，车票预订成！", null, true);
+						else {
+							notify("恭喜，车票预订成！", null, true);
+						}
 						setTimeout(function() {
 							if( confirm("车票预订成，去付款？") ){
 								window.location.replace(userInfoUrl);
